@@ -827,9 +827,9 @@ const ChatBuddy = ({ activeBooking, lang, t, onCancel, onRebook }: any) => {
         {loading && <div className="p-6 bg-white dark:bg-slate-900 rounded-[2rem] w-fit shadow-xl border border-slate-50"><Loader2 className="animate-spin text-primary-500" /></div>}
       </div>
       <div className="space-y-4">
-        <div className="flex gap-2 overflow-x-auto no-scrollbar">
+        <div className="flex flex-nowrap gap-2 overflow-x-auto no-scrollbar whitespace-nowrap px-1 pb-2">
           {['Weather Prediction', 'Gate Changes', 'Budget & Expenses', 'Local Famous Places', 'Flight Cancellations & Rebooking'].map(q => (
-            <button key={q} onClick={()=>handleSend(q)} className="shrink-0 px-6 py-3 bg-white/50 backdrop-blur-xl border border-white/50 rounded-full text-[9px] font-black uppercase tracking-widest text-primary-600 shadow-sm">{q}</button>
+            <button key={q} onClick={()=>handleSend(q)} className="shrink-0 px-6 py-3 bg-white/50 backdrop-blur-xl border border-white/50 rounded-full text-[9px] font-black uppercase tracking-widest text-primary-600 shadow-sm transition-transform active:scale-95">{q}</button>
           ))}
         </div>
         <div className="flex gap-3 pb-4">
@@ -911,7 +911,7 @@ const ProfileTab = ({ user, setUser, lang, setLang, theme, setTheme, t }: any) =
         {theme === 'light' ? <Moon size={24}/> : <Sun size={24} className="text-amber-500"/>}
       </button>
     </div>
-    <button onClick={()=>{setUser(null); localStorage.removeItem('travel_ease_user');}} className="w-full max-sm p-9 bg-rose-50 text-rose-600 rounded-[3rem] font-black uppercase tracking-[0.4em] flex items-center justify-between px-12 shadow-xl hover:bg-rose-100 transition-all"><span>Terminate Sync</span><LogOut/></button>
+    <button onClick={()=>{setUser(null); localStorage.removeItem('travel_ease_user');}} className="w-full max-w-sm p-9 bg-rose-50 text-rose-600 rounded-[3rem] font-black uppercase tracking-[0.4em] flex items-center justify-between px-12 shadow-xl hover:bg-rose-100 transition-all"><span>Terminate Sync</span><LogOut/></button>
   </div>
 );
 
