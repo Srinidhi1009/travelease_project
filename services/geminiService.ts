@@ -1,138 +1,106 @@
-
+import { GoogleGenAI } from "@google/genai";
 import { Place, ChatMessage } from "../types";
 
+// Initialize the Google GenAI SDK using process.env.API_KEY as per the guidelines.
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
 /**
- * Local Mock Service for Travel Buddy
- * Provides dynamic responses based on the user's booking context.
+ * Advanced Travel Assistant powered by Gemini API.
+ * Provides dynamic responses based on the user's journey context.
  */
-
-const CITY_DATA: Record<string, { places: string[], gates: string[], weather: string }> = {
-  'Assam': {
-    places: ["Kamakhya Temple", "Kaziranga National Park", "Umananda Island"],
-    gates: ["T1 - Gate 24", "T1 - Gate 08"],
-    weather: "22°C, Overcast skies"
-  },
-  'Mumbai': {
-    places: ["Gateway of India", "Marine Drive", "Elephanta Caves"],
-    gates: ["T2 - Gate 12", "T2 - Gate 45"],
-    weather: "31°C, Humid"
-  },
-  'Delhi': {
-    places: ["Red Fort", "Qutub Minar", "India Gate"],
-    gates: ["T3 - Gate 18", "T3 - Gate 04"],
-    weather: "28°C, Hazy"
-  },
-  'Bangalore': {
-    places: ["Lalbagh Botanical Garden", "Bangalore Palace", "Cubbon Park"],
-    gates: ["T1 - Gate 32", "T1 - Gate 15"],
-    weather: "24°C, Pleasant"
-  },
-  'Goa': {
-    places: ["Calangute Beach", "Basilica of Bom Jesus", "Dudhsagar Falls"],
-    gates: ["T1 - Gate 05", "T1 - Gate 02"],
-    weather: "29°C, Sunny"
-  },
-  'Kerala': {
-    places: ["Munnar Tea Gardens", "Alleppey Backwaters", "Varkala Beach"],
-    gates: ["T1 - Gate 09", "T2 - Gate 21"],
-    weather: "27°C, Tropical"
-  }
-};
-
-const RESPONSES_TEMPLATE: Record<string, Record<string, string>> = {
-  en: {
-    'Weather Prediction': "The current environment in {city} is {weather}. Expect stable conditions for the next 48 hours.",
-    'Gate Changes': "Your flight to {city} is scheduled at {gate}. Status: {status}. Connectivity stable.",
-    'Budget & Expenses': "You have utilized {perc}% of your ₹{budget} budget for {city}. ₹{rem} remaining for this node.",
-    'Local Famous Places': "Top nearby nodes in {city}: {places}.",
-    'Flight Cancellations & Rebooking': "Operational protocols for {city} detected. Would you like to terminate this node or reroute your journey?",
-    'default': "Node connectivity stable. How can I assist with your journey to {city} today?"
-  },
-  hi: {
-    'Weather Prediction': "{city} में वर्तमान वातावरण {weather} है। अगले 48 घंटों तक मौसम स्थिर रहने की संभावना है।",
-    'Gate Changes': "{city} के लिए आपकी उड़ान {gate} पर निर्धारित है। स्थिति: {status}।",
-    'Budget & Expenses': "आपने {city} के लिए अपने ₹{budget} बजट का {perc}% उपयोग किया है। ₹{rem} शेष हैं।",
-    'Local Famous Places': "{city} में शीर्ष स्थान: {places}।",
-    'Flight Cancellations & Rebooking': "{city} के लिए परिचालन प्रोटोकॉल का पता चला। क्या आप इस नोड को समाप्त करना चाहेंगे या अपनी यात्रा को फिर से शुरू करना चाहेंगे?",
-    'default': "नोड कनेक्टिविटी स्थिर है। आज मैं आपकी {city} यात्रा योजना में आपकी क्या सहायता कर सकता हूँ?"
-  },
-  te: {
-    'Weather Prediction': "{city}లో ప్రస్తుత వాతావరణం {weather}. రాబోయే 48 గంటల వరకు సాధారణ స్థితి అంచనా వేయబడింది.",
-    'Gate Changes': "{city}కి మీ విమానం {gate} వద్ద షెడ్యూల్ చేయబడింది. స్థితి: {status}.",
-    'Budget & Expenses': "మీరు {city} కోసం మీ ₹{budget} బడ్జెట్‌లో {perc}% ఉపయోగించారు. ₹{rem} మిగిలి ఉన్నాయి.",
-    'Local Famous Places': "{city}లోని ప్రముఖ ప్రదేశాలు: {places}.",
-    'Flight Cancellations & Rebooking': "{city} కోసం కార్యాచరణ ప్రోటోకాల్‌లు గుర్తించబడ్డాయి. మీరు ఈ నోడ్‌ను రద్దు చేయాలనుకుంటున్నారా లేదా మీ ప్రయాణాన్ని మళ్ళించాలనుకుంటున్నారా?",
-    'default': "నోడ్ కనెక్టివిటీ స్థిరంగా ఉంది. ఈరోజు మీ {city} ప్రయాణ మ్యాపింగ్‌లో నేను మీకు ఎలా సహాయం చేయగలను?"
-  }
-};
-
 export async function chatWithGemini(prompt: string, context: string = '', language: string = 'en'): Promise<{text: string, type: ChatMessage['type']}> {
-  await new Promise(r => setTimeout(r, 600));
-  
-  const lang = language as 'en' | 'hi' | 'te';
-  const bookings = JSON.parse(context || '[]');
-  const latest = bookings[0] || { destination: 'India', spent: 0, details: { totalBudget: 0 } };
-  
-  const city = latest.destination;
-  const cityInfo = CITY_DATA[city] || { 
-    places: ["Local Heritage Sites", "City Center", "Famous Markets"], 
-    gates: ["Main Terminal"], 
-    weather: "25°C, Normal" 
-  };
+  try {
+    // Calling Gemini with the correct model and parameters as per guidelines.
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: [
+        { text: `Current User Booking Context (JSON): ${context}` },
+        { text: `User Query: ${prompt}` }
+      ],
+      config: {
+        systemInstruction: `You are TravelEase AI. Your goal is to provide specific, utility-focused answers based on the user's booking data.
+        
+        RULES:
+        1. ONLY answer the specific question asked. If they ask for weather, talk ONLY about weather. If gate, ONLY gate.
+        2. BE CONCISE. Do not provide a "Strategic Overview" or a full summary unless explicitly asked for a full status report.
+        3. WEATHER: Use the destination in the context. Assam is usually cool/dry in Jan. Use realistic weather logic for Indian cities.
+        4. GATES: If a booking is active, give a realistic gate number (e.g., Gate 42B, Terminal 2).
+        5. BUDGET: Calculate spent vs remaining based on the context JSON. Be precise with the numbers provided.
+        6. LOCAL PLACES: Suggest 3 specific attractions in the destination city (e.g., for Assam suggest Kaziranga, Kamakhya Temple).
+        7. ACTIONS (Rebook/Cancel): ONLY set the response type to 'action_rebook' if the user explicitly asks to cancel, change, or rebook their trip. Do not include rebook/cancel buttons for general questions about weather or gates.
+        8. STYLE: Professional, futuristic travel terminal aesthetic. No generic "Uplink Established" headers every time.
+        9. Language: Respond in ${language}.`,
+      },
+    });
 
-  const budget = latest.details?.totalBudget || 50000;
-  const spent = latest.spent || 0;
-  const remaining = budget - spent;
-  const perc = budget > 0 ? Math.round((spent / budget) * 100) : 0;
-
-  const responseSet = RESPONSES_TEMPLATE[lang] || RESPONSES_TEMPLATE['en'];
-  
-  let keyFound = 'default';
-  let type: ChatMessage['type'] = 'default';
-
-  if (prompt.toLowerCase().includes('cancel') || prompt.toLowerCase().includes('rebook')) {
-    keyFound = 'Flight Cancellations & Rebooking';
-    type = 'action_rebook';
-  } else {
-    for (const key of Object.keys(responseSet)) {
-      if (prompt.toLowerCase().includes(key.toLowerCase())) {
-        keyFound = key;
-        if (key === 'Flight Cancellations & Rebooking') type = 'action_rebook';
-        break;
-      }
+    const text = response.text || "Communication timeout. Please retry.";
+    
+    // Logic to determine if we should show the rebook/cancel buttons
+    let type: ChatMessage['type'] = 'default';
+    const lowerPrompt = prompt.toLowerCase();
+    
+    // Only trigger rebook/cancel UI if user intent is specifically about modification or termination
+    if (lowerPrompt.includes('cancel') || lowerPrompt.includes('rebook') || 
+        lowerPrompt.includes('modify') || lowerPrompt.includes('terminate') || 
+        lowerPrompt.includes('change my trip')) {
+      type = 'action_rebook';
     }
-  }
 
-  let text = responseSet[keyFound];
-  text = text.replace(/{city}/g, city)
-             .replace(/{weather}/g, cityInfo.weather)
-             .replace(/{gate}/g, cityInfo.gates[0])
-             .replace(/{status}/g, "On Time")
-             .replace(/{budget}/g, budget.toLocaleString())
-             .replace(/{perc}/g, perc.toString())
-             .replace(/{rem}/g, remaining.toLocaleString())
-             .replace(/{places}/g, cityInfo.places.join(", "));
-  
-  return { text, type };
+    return { text, type };
+  } catch (error) {
+    console.error("Gemini Error:", error);
+    return { text: "Uplink failure. Node connectivity lost.", type: 'default' };
+  }
 }
 
-export async function exploreLocalPlaces(city: string) {
-  return [
-    { 
-      id: 'm1', 
-      name: `${city} Heritage Node`, 
+/**
+ * Suggests real local attractions using Gemini's knowledge base.
+ */
+export async function exploreLocalPlaces(city: string): Promise<Place[]> {
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: `Provide 3 real famous tourist attractions in ${city}, India. Output only the names, comma-separated.`,
+    });
+    
+    const text = response.text || "";
+    const placeNames = text.split(',').map(p => p.trim()).filter(p => p.length > 0);
+    const finalNames = placeNames.length > 0 ? placeNames : [`${city} Landmark`];
+    
+    return finalNames.map((name, i) => ({ 
+      id: `ai-node-${i}-${Date.now()}`, 
+      name: name, 
       city, 
-      category: 'Heritage', 
-      rating: 4.8, 
-      reviewsCount: 1200,
-      price: 500, 
-      img: '', 
+      category: i % 2 === 0 ? 'Heritage' : 'Experiences', 
+      rating: 4.6 + (i * 0.1), 
+      reviewsCount: 1200 + (i * 450),
+      price: 500 + (i * 200), 
+      img: 'https://images.unsplash.com/photo-1548013146-72479768bbaa?auto=format&fit=crop&q=80&w=500', 
       gallery: [],
-      tags: ['Verified'],
-      aiBadge: 'Top Pick',
-      description: 'A globally verified landmark.',
-      tips: 'Visit early for best mapping.',
+      tags: ['Verified', 'AI Pick'],
+      aiBadge: 'Top Tier',
+      description: 'An AI-verified high-traffic node in the regional grid.',
+      tips: 'Engage with local guides for enhanced data synchronization.',
       reviews: []
-    },
-  ] as Place[];
+    }));
+  } catch (error) {
+    return [
+      { 
+        id: 'fallback-node', 
+        name: `${city} Hub`, 
+        city, 
+        category: 'Heritage', 
+        rating: 4.8, 
+        reviewsCount: 1200,
+        price: 500, 
+        img: 'https://images.unsplash.com/photo-1548013146-72479768bbaa?auto=format&fit=crop&q=80&w=500', 
+        gallery: [],
+        tags: ['Verified'],
+        aiBadge: 'Top Pick',
+        description: 'A globally verified landmark.',
+        tips: 'Visit early for best mapping.',
+        reviews: []
+      },
+    ];
+  }
 }
