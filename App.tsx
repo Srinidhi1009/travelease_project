@@ -213,7 +213,7 @@ const Dashboard = ({ user, bookings, activeBookingId, setActiveBookingId, setBoo
       {activeBooking && activeBooking.status !== 'cancelled' && (
         <div className="space-y-8">
           <div className="flex items-center gap-3 px-1">
-            <div className="w.5 h-6 bg-primary-600 rounded-full"/>
+            <div className="w-1.5 h-6 bg-primary-600 rounded-full"/>
             <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tighter">Savings Intelligence</h3>
           </div>
           
@@ -822,21 +822,31 @@ const TripsTab = ({ bookings, onCancel, onRebook, t }: any) => (
   </div>
 );
 
-const ChatBuddy = ({ activeBooking, lang, t, onCancel, onRebook }: any) => {
-  const [messages, setMessages] = useState<ChatMessage[]>([{ id: '1', role: 'assistant', content: "Node connectivity stable. How can I assist with your journey?", timestamp: new Date(), type: 'default' }]);
+const ChatBuddy = ({ activeBooking, lang, t, onCancel, onRebook, userId }: any) => {
+  const chatKey = `travel_ease_chat_${userId}_${activeBooking?.id || 'general'}`;
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    const saved = localStorage.getItem(chatKey);
+    return saved ? JSON.parse(saved) : [{ id: '1', role: 'assistant', content: "Node connectivity stable. How can I assist with your journey?", timestamp: new Date(), type: 'default' }];
+  });
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  useEffect(() => { scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight); }, [messages]);
+
+  useEffect(() => {
+    localStorage.setItem(chatKey, JSON.stringify(messages));
+    scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight);
+  }, [messages, chatKey]);
   
   const handleSend = async (customPrompt?: string) => {
     const prompt = customPrompt || input;
     if (!prompt.trim()) return;
-    setMessages(prev => [...prev, { id: Date.now().toString(), role: 'user', content: prompt, timestamp: new Date() }]);
+    const userMsg: ChatMessage = { id: Date.now().toString(), role: 'user', content: prompt, timestamp: new Date() };
+    setMessages(prev => [...prev, userMsg]);
     if (!customPrompt) setInput('');
     setLoading(true);
     const response = await chatWithGemini(prompt, JSON.stringify([activeBooking]), lang);
-    setMessages(prev => [...prev, { id: (Date.now()+1).toString(), role: 'assistant', content: response.text, timestamp: new Date(), type: response.type }]);
+    const assistantMsg: ChatMessage = { id: (Date.now()+1).toString(), role: 'assistant', content: response.text, timestamp: new Date(), type: response.type };
+    setMessages(prev => [...prev, assistantMsg]);
     setLoading(false);
   };
   
@@ -1018,14 +1028,30 @@ const MainApp = () => {
       return saved ? JSON.parse(saved) : null;
     } catch (e) { return null; }
   });
-  const [lang, setLang] = useState<Language>('en');
-  const [tab, setTab] = useState<'home' | 'trips' | 'chat' | 'profile'>('home');
+  
+  const [lang, setLang] = useState<Language>(() => {
+    const saved = localStorage.getItem('travel_ease_lang');
+    return (saved as Language) || 'en';
+  });
+
+  const [tab, setTab] = useState<'home' | 'trips' | 'chat' | 'profile'>(() => {
+    const saved = localStorage.getItem('travel_ease_tab');
+    return (saved as any) || 'home';
+  });
+
   const [bookingMode, setBookingMode] = useState<'none' | 'ai' | 'manual'>('none');
   const [rebookData, setRebookData] = useState<any>(null);
   const [paymentDetails, setPaymentDetails] = useState<{ amount: number; data: any } | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [activeBookingId, setActiveBookingId] = useState<string | null>(null);
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  
+  const [activeBookingId, setActiveBookingId] = useState<string | null>(() => {
+    return localStorage.getItem('travel_ease_active_booking_id');
+  });
+
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const saved = localStorage.getItem('travel_ease_theme');
+    return (saved as any) || 'light';
+  });
 
   const t = (key: string) => (TRANSLATIONS[lang] as any)[key] || key;
 
@@ -1035,7 +1061,9 @@ const MainApp = () => {
         const savedBookings = localStorage.getItem(`travel_ease_bookings_${user.id}`);
         const parsed = savedBookings ? JSON.parse(savedBookings) : [];
         setBookings(Array.isArray(parsed) ? parsed : []);
-        setActiveBookingId(parsed.length > 0 ? parsed[0].id : null);
+        if (!activeBookingId && parsed.length > 0) {
+            setActiveBookingId(parsed[0].id);
+        }
       } catch (e) { setBookings([]); }
     } else {
       setBookings([]);
@@ -1046,7 +1074,22 @@ const MainApp = () => {
   useEffect(() => {
     if (theme === 'dark') document.documentElement.classList.add('dark');
     else document.documentElement.classList.remove('dark');
+    localStorage.setItem('travel_ease_theme', theme);
   }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem('travel_ease_lang', lang);
+  }, [lang]);
+
+  useEffect(() => {
+    localStorage.setItem('travel_ease_tab', tab);
+  }, [tab]);
+
+  useEffect(() => {
+    if (activeBookingId) {
+      localStorage.setItem('travel_ease_active_booking_id', activeBookingId);
+    }
+  }, [activeBookingId]);
 
   const handleBookingComplete = () => {
     if (!paymentDetails || !user) return;
@@ -1087,6 +1130,8 @@ const MainApp = () => {
 
   const handleLogout = () => {
     localStorage.removeItem('travel_ease_current_session');
+    localStorage.removeItem('travel_ease_tab');
+    localStorage.removeItem('travel_ease_active_booking_id');
     setUser(null);
     setBookings([]);
     setActiveBookingId(null);
@@ -1105,7 +1150,7 @@ const MainApp = () => {
         ) : tab === 'trips' ? (
           <TripsTab bookings={bookings} onCancel={cancelBooking} onRebook={startRebooking} t={t} />
         ) : tab === 'chat' ? (
-          <ChatBuddy activeBooking={activeBooking} lang={lang} t={t} onCancel={cancelBooking} onRebook={startRebooking} />
+          <ChatBuddy activeBooking={activeBooking} lang={lang} t={t} onCancel={cancelBooking} onRebook={startRebooking} userId={user.id} />
         ) : (
           <ProfileTab user={user} onLogout={handleLogout} lang={lang} setLang={setLang} theme={theme} setTheme={setTheme} t={t} />
         )}
